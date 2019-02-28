@@ -9,9 +9,9 @@ This scripts may be helpful for you to auto resolve the issues.
 
 ### 2. Subpath umount issue
 
-[subpath-nas](kubelet/subpath-nas.md)
+[subpath-nas](./subpath-nas.md)
 
-[subpath-oss](kubelet/subpath-oss.md)
+[subpath-oss](./subpath-oss.md)
 
 
 ## How to Use
