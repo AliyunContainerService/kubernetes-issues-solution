@@ -1,0 +1,42 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: acs-kubelet-recover
+  labels:
+    k8s-volume: acs-kubelet-recover
+spec:
+  selector:
+    matchLabels:
+      name: acs-kubelet-recover
+  template:
+    metadata:
+      labels:
+        name: acs-kubelet-recover
+    spec:
+      hostPID: true
+      hostNetwork: true
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: acs-kubelet-recover
+        image: registry.cn-hangzhou.aliyuncs.com/plugins/acs-cluster-recover:v1.12-8fd4a01-aliyun
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true
+        env:
+        - name: LONGRUNNING
+          value: "True"
+        resources:
+          limits:
+            memory: 100Mi
+        volumeMounts:
+        - name: recover
+          mountPath: /host/etc/kubernetes/acs-kubelet-recover
+      volumes:
+      - name: recover
+        hostPath:
+          path: /etc/kubernetes/acs-kubelet-recover
+  updateStrategy:
+    type: RollingUpdate
