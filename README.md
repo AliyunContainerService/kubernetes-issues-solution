@@ -1,18 +1,10 @@
-
 Provider scripts, resolution to fix your Kubernetes cluster issues.
 
 
 ## Kubelet Issue List
 
-### 1. Subpath umount issue
+[Kubelet Issues](kubelet/README.md)
 
-[subpath-nas](kubelet/subpath-nas.md)
-
-[subpath-oss](kubelet/subpath-oss.md)
-
-### 2. Orphaned issue
-
-[Orphaned Pod](kubelet/orphaned.md)
 
 ## API-Server Issue List
 

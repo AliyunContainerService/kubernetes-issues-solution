@@ -1,6 +1,51 @@
 #!/bin/sh
 echo "Starting to fix the possible issue..."
 
+
+## umount subpath if mntpoint is corrupted
+## both OSS, NAS may meet this issue;
+fix_Subpath_ErrorReading(){
+    lineStr=$1
+    tmpStr=`echo $lineStr | awk -F"lstat" '{print $2}'`
+    if [ "$tmpStr" != "" ]; then
+        mntPoint=`echo $tmpStr | awk -F":" '{print $1}'`
+        mntPoint=`echo $mntPoint | xargs`
+        if [ "$mntPoint" != "" ]; then
+            num=`mount | grep $mntPoint | wc -l`
+            if [ "$num" != "0" ]; then
+        	    umount -f $mntPoint
+                echo "Fix subpath Error Reading Issue:: Umount $mntPoint ...."
+                idleTimes=0
+            fi
+        fi
+    fi
+}
+
+## OSS issue, when remove the subpath;
+## umount subpath if mntpoint is corrupted
+## Reproduce:
+# 1. use subpath create pod;
+# 2. login host of pod, remove subpath with root mountpoint;
+# 3. kubectl delete pod **
+# 4. check /var/log/message
+fix_Oss_Subpath_NotEmpty(){
+    lineStr=$1
+    tmpStr=`echo $lineStr | awk -F"error deleting " '{print $2}'`
+    if [ "$tmpStr" != "" ]; then
+        mntPoint=`echo $tmpStr | awk -F": remove" '{print $1}'`
+        mntPoint=`echo $mntPoint | xargs`
+        if [ "$mntPoint" != "" ]; then
+            num=`mount | grep $mntPoint | wc -l`
+            if [ "$num" != "0" ]; then
+                mntPoint=`mount | grep $mntPoint | awk '{print $3}'`
+        	    umount -f $mntPoint
+                echo "Fix Subpath Not empty Issue:: Umount $mntPoint ...."
+                idleTimes=0
+            fi
+        fi
+    fi
+}
+
 # fix orphaned pod, umount the mntpoint;
 fix_orphanedPod(){
     secondPart=`echo $item | awk -F"Orphaned pod" '{print $2}'`
@@ -52,49 +97,6 @@ fix_orphanedPod(){
     done
 }
 
-## umount subpath if mntpoint is corrupted
-fix_subpath(){
-    lineStr=$1
-    tmpStr=`echo $lineStr | awk -F"lstat" '{print $2}'`
-    if [ "$tmpStr" != "" ]; then
-        mntPoint=`echo $tmpStr | awk -F":" '{print $1}'`
-        mntPoint=`echo $mntPoint | xargs`
-        if [ "$mntPoint" != "" ]; then
-            num=`mount | grep $mntPoint | wc -l`
-            if [ "$num" != "0" ]; then
-        	    umount -f $mntPoint
-                echo "Fix subpath Issue:: Umount $mntPoint ...."
-                idleTimes=0
-            fi
-        fi
-    fi
-}
-
-## umount subpath if mntpoint is corrupted
-## Reproduce:
-# 1. use subpath create pod;
-# 2. login host of pod, remove subpath with root mountpoint;
-# 3. kubectl delete pod **
-# 4. check /var/log/message
-fix_Subpath_NotEmpty(){
-    lineStr=$1
-    tmpStr=`echo $lineStr | awk -F"error deleting " '{print $2}'`
-    if [ "$tmpStr" != "" ]; then
-        mntPoint=`echo $tmpStr | awk -F": remove" '{print $1}'`
-        mntPoint=`echo $mntPoint | xargs`
-        if [ "$mntPoint" != "" ]; then
-            num=`mount | grep $mntPoint | wc -l`
-            if [ "$num" != "0" ]; then
-                mntPoint=`mount | grep $mntPoint | awk '{print $3}'`
-        	    umount -f $mntPoint
-                echo "Fix Subpath Not empty Issue:: Umount $mntPoint ...."
-                idleTimes=0
-            fi
-        fi
-    fi
-}
-
-
 
 idleTimes=0
 IFS=$'\r\n'
@@ -107,11 +109,11 @@ do
             fix_orphanedPod $item
         ## subpath cannot umount error proccess
         elif [[ $item == *"error cleaning subPath mounts for volume"* ]] && [[ $item == *"error reading"* ]]; then
-        	fix_subpath $item
-        elif [[ $item == *"error cleaning subPath mounts for volume"* ]] && [[ $item == *"directory not empty"* ]] && [[ $item == *"error deleting"* ]]; then
-        	fix_Subpath_NotEmpty $item
+        	fix_Subpath_ErrorReading $item
+        ## oss subpath removed issue.
+        elif [[ $item == *"error cleaning subPath mounts for volume"* ]] && [[ $item == *"error deleting"* ]] && [[ $item == *"directory not empty"* ]]; then
+        	fix_Oss_Subpath_NotEmpty $item
         fi
-
     done
 
     idleTimes=`expr $idleTimes + 1`

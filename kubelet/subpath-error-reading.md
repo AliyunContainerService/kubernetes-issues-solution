@@ -13,6 +13,16 @@ error reading /var/lib/kubelet/pods/cb7ceb74-34d8-11e9-b51c-00163e0cd246/volume-
 lstat /var/lib/kubelet/pods/cb7ceb74-34d8-11e9-b51c-00163e0cd246/volume-subpaths/pv-nas-v4/nginx/0: stale NFS file handle"
 ```
 
+Or using oss:
+
+```
+Mar  1 10:29:19 iZ2ze1fa4tkhgqper1l406Z kubelet: E0301 10:29:19.869173    8651 nestedpendingoperations.go:267] Operation for "\"flexvolume-alicloud/oss/oss1\"
+(\"aa401a77-3bc9-11e9-b1a1-00163e03e854\")" failed. No retries permitted until 2019-03-01 10:29:51.869139106 +0800 CST m=+222096.349178930 (durationBeforeRetry 32s).
+Error: "error cleaning subPath mounts for volume \"oss1\" (UniqueName: \"flexvolume-alicloud/oss/oss1\") pod \"aa401a77-3bc9-11e9-b1a1-00163e03e854\"
+(UID: \"aa401a77-3bc9-11e9-b1a1-00163e03e854\") : error reading /var/lib/kubelet/pods/aa401a77-3bc9-11e9-b1a1-00163e03e854/volume-subpaths/oss1/nginx-flexvolume-oss:
+lstat /var/lib/kubelet/pods/aa401a77-3bc9-11e9-b1a1-00163e03e854/volume-subpaths/oss1/nginx-flexvolume-oss/0: transport endpoint is not connected"
+```
+
 ## Reason
 
 If remove the subpath when pod is running, the mountpoint is useless. I code get error when clean the mountpoint.
@@ -25,11 +35,11 @@ If remove the subpath when pod is running, the mountpoint is useless. I code get
 		}
 ```
 
-This issue is fixed in 1.11.7 and 1.12 version.
+This issue is fixed in 1.11.7 and 1.12 version, but just for nas;
 
 PR Details: [https://github.com/kubernetes/kubernetes/pull/71804](https://github.com/kubernetes/kubernetes/pull/71804)
 
-## How to Reproduce
+## How to Reproduce - Nas
 
 NFS example:
 
@@ -140,6 +150,82 @@ On the Pod located node:
 	Error: "error cleaning subPath mounts for volume \"pvc-nas\" (UniqueName: \"flexvolume-alicloud/nas/pv-nas\") pod \"009381d9-3504-11e9-b51c-00163e0cd246\" (UID: \"009381d9-3504-11e9-b51c-00163e0cd246\") : 
 	error reading /var/lib/kubelet/pods/009381d9-3504-11e9-b51c-00163e0cd246/volume-subpaths/pv-nas/nginx: 
 	lstat /var/lib/kubelet/pods/009381d9-3504-11e9-b51c-00163e0cd246/volume-subpaths/pv-nas/nginx/0: stale NFS file handle"
+
+
+## How to Reproduce - Oss
+
+NFS example:
+
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-oss-deploy
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx-flexvolume-oss
+        image: nginx
+        volumeMounts:
+          - name: "oss1"
+            mountPath: "/data"
+            subPath: hello
+      volumes:
+        - name: "oss1"
+          flexVolume:
+            driver: "alicloud/oss"
+            options:
+              bucket: "aliyun-docker"
+              url: "oss-cn-hangzhou.aliyuncs.com"
+              otherOpts: "-o max_stat_cache_size=0 -o allow_other"
+              akId: "**"
+              akSecret: "**"
+```
+
+### 1. Create pod
+
+	# kubectl create -f osss.yaml
+
+	# kubectl get pod
+    NAME                                READY     STATUS    RESTARTS   AGE
+    nginx-oss-deploy-6bfd859cc4-7sb75   1/1       Running   0          19m
+
+### 2. Login the node which Pod locate
+
+	# kubectl describe pod nginx-oss-deploy-6bfd859cc4-7sb75 | grep Node
+	Node:               cn-beijing.i-2ze1fa4tkhgqperal406/172.16.1.1
+
+	# ssh 172.16.1.1
+
+
+### 3. Reproduce
+
+On the Pod located node:
+
+	# mount | grep oss
+    ossfs on /var/lib/kubelet/pods/44f0528b-3b06-11e9-b1a1-00163e03e854/volumes/alicloud~oss/oss1 type fuse.ossfs (rw,nosuid,nodev,relatime,user_id=0,group_id=0,allow_other)
+    ossfs on /var/lib/kubelet/pods/44f0528b-3b06-11e9-b1a1-00163e03e854/volume-subpaths/oss1/nginx-flexvolume-oss/0 type fuse.ossfs (rw,relatime,user_id=0,group_id=0,allow_other)
+
+	## kill the ossfs when pod is running;
+	# ps -ef | grep ossfs
+	# kill **
+
+	## Delete running pod, the pod is hang in deleting;
+	# kubectl delete pod nginx-oss-deploy-6bfd859cc4-7sb75
+	pod "nginx-oss-deploy-6bfd859cc4-7sb75" deleted
+
+	## check logs on pod locate node
+	# tailf /var/log/messages | grep "transport endpoint is not connected"
+    Mar  1 10:29:19 iZ2ze1fa4tkhgqper1l406Z kubelet: E0301 10:29:19.869173    8651 nestedpendingoperations.go:267] Operation for "\"flexvolume-alicloud/oss/oss1\"
+    (\"aa401a77-3bc9-11e9-b1a1-00163e03e854\")" failed. No retries permitted until 2019-03-01 10:29:51.869139106 +0800 CST m=+222096.349178930 (durationBeforeRetry 32s).
+    Error: "error cleaning subPath mounts for volume \"oss1\" (UniqueName: \"flexvolume-alicloud/oss/oss1\") pod \"aa401a77-3bc9-11e9-b1a1-00163e03e854\"
+    (UID: \"aa401a77-3bc9-11e9-b1a1-00163e03e854\") : error reading /var/lib/kubelet/pods/aa401a77-3bc9-11e9-b1a1-00163e03e854/volume-subpaths/oss1/nginx-flexvolume-oss:
+    lstat /var/lib/kubelet/pods/aa401a77-3bc9-11e9-b1a1-00163e03e854/volume-subpaths/oss1/nginx-flexvolume-oss/0: transport endpoint is not connected"
 
 
 ## How to Fix

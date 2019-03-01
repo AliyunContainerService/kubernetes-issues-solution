@@ -1,4 +1,3 @@
-
 Sometime, kubelet issue happens and cannot be self healing, and we have to resolve the issue by hands.
 
 This scripts may be helpful for you to auto resolve the issues.
@@ -9,10 +8,13 @@ This scripts may be helpful for you to auto resolve the issues.
 
 ### 2. Subpath umount issue
 
-[subpath-nas](./subpath-nas.md)
+[subpath-error-reading](./subpath-error-reading.md)
 
-[subpath-oss](./subpath-oss.md)
+    nas/oss mountpoint is umounted when pod running, pod cannot be delete normally.
 
+[subpath-oss-error-delete](./subpath-oss-error-delete.md)
+
+    oss using subpath, and the subpath is removed when pod running.
 
 ## How to Use
 
