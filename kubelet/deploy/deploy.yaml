@@ -33,10 +33,10 @@ spec:
             memory: 100Mi
         volumeMounts:
         - name: recover
-          mountPath: /host/etc/kubernetes/acs-kubelet-recover
+          mountPath: /host/etc/kubernetes/acs-cluster-recover
       volumes:
       - name: recover
         hostPath:
-          path: /etc/kubernetes/acs-kubelet-recover
+          path: /etc/kubernetes/acs-cluster-recover
   updateStrategy:
     type: RollingUpdate
