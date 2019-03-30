@@ -21,7 +21,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: acs-kubelet-recover
-        image: registry.cn-hangzhou.aliyuncs.com/plugins/acs-cluster-recover:v1.12-8fd4a01-aliyun
+        image: registry.cn-hangzhou.aliyuncs.com/acs/ack-cluster-helper:v1.12-8fd4a01-aliyun
         imagePullPolicy: Always
         securityContext:
           privileged: true
