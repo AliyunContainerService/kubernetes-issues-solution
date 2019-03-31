@@ -1,7 +1,10 @@
 #!/bin/sh
-echo "Starting to fix the possible issue..."
 
+date_echo() {
+    echo `date "+%H:%M:%S-%Y-%m-%d"` $1
+}
 
+date_echo "Starting to fix the possible issue..."
 ## umount subpath if mntpoint is corrupted
 ## both OSS, NAS may meet this issue;
 fix_Subpath_ErrorReading(){
@@ -13,8 +16,8 @@ fix_Subpath_ErrorReading(){
         if [ "$mntPoint" != "" ]; then
             num=`mount | grep $mntPoint | wc -l`
             if [ "$num" != "0" ]; then
-        	    umount -f $mntPoint
-                echo "Fix subpath Error Reading Issue:: Umount $mntPoint ...."
+                umount $mntPoint
+                date_echo "Fix subpath Error Reading Issue:: Umount $mntPoint ...."
                 idleTimes=0
             fi
         fi
@@ -38,8 +41,8 @@ fix_Oss_Subpath_NotEmpty(){
             num=`mount | grep $mntPoint | wc -l`
             if [ "$num" != "0" ]; then
                 mntPoint=`mount | grep $mntPoint | awk '{print $3}'`
-        	    umount -f $mntPoint
-                echo "Fix Subpath Not empty Issue:: Umount $mntPoint ...."
+                umount $mntPoint
+                date_echo "Fix Subpath Not empty Issue:: Umount $mntPoint ...."
                 idleTimes=0
             fi
         fi
@@ -60,7 +63,7 @@ fix_orphanedPod(){
         mountpath=`mount | grep /var/lib/kubelet/pods/$podid/volume-subpaths/ | awk '{print $3}'`
         for mntPath in $mountpath;
         do
-             echo "Fix subpath Issue:: umount subpath $mntPath"
+             date_echo "Fix subpath Issue:: umount subpath $mntPath"
              umount $mntPath
              idleTimes=0
         done
@@ -71,25 +74,25 @@ fix_orphanedPod(){
     do
          subVolumes=`ls -A /var/lib/kubelet/pods/$podid/volumes/$volumeType`
          if [ "$subVolumes" != "" ]; then
-             echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType contents volume: $subVolumes"
+             date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType contents volume: $subVolumes"
              for subVolume in $subVolumes;
              do
                  # check subvolume path is mounted or not
                  findmnt /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
                  if [ "$?" != "0" ]; then
-                     echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, just need to remove"
+                     date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, just need to remove"
                      content=`ls -A /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume`
                      # if path is empty, just remove the directory.
                      if [ "$content" = "" ]; then
                          rmdir /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
                      # if path is not empty, do nothing.
                      else
-                         echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, but not empty"
+                         date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, but not empty"
                          idleTimes=0
                      fi
                  # is mounted, umounted it first.
                  else
-                     echo "Fix Orphaned Issue:: /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is mounted, umount it"
+                     date_echo "Fix Orphaned Issue:: /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is mounted, umount it"
                      umount /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
                  fi
              done
@@ -123,4 +126,4 @@ do
     sleep 5
 done
 
-echo "Finish Process......"
+date_echo "Finish Process......"
