@@ -77,24 +77,46 @@ fix_orphanedPod(){
              date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType contents volume: $subVolumes"
              for subVolume in $subVolumes;
              do
-                 # check subvolume path is mounted or not
-                 findmnt /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
-                 if [ "$?" != "0" ]; then
-                     date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, just need to remove"
-                     content=`ls -A /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume`
-                     # if path is empty, just remove the directory.
-                     if [ "$content" = "" ]; then
-                         rmdir /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
-                     # if path is not empty, do nothing.
+                 if [ "$volumeType" == "kubernetes.io~csi" ]; then
+                     # check subvolume path is mounted or not
+                     findmnt /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/mount
+                     if [ "$?" != "0" ]; then
+                         date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/mount is not mounted, just need to remove"
+                         content=`ls -A /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/mount`
+                         # if path is empty, just remove the directory.
+                         if [ "$content" = "" ]; then
+                             rmdir /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/mount
+                             rm -f /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/vol_data.json
+                             rmdir /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
+                         # if path is not empty, do nothing.
+                         else
+                             date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/mount is not mounted, but not empty"
+                             idleTimes=0
+                         fi
+                     # is mounted, umounted it first.
                      else
-                         date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, but not empty"
-                         idleTimes=0
+                         date_echo "Fix Orphaned Issue:: /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/mount is mounted, umount it"
+                         umount /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume/mount
                      fi
-                 # is mounted, umounted it first.
                  else
-                     date_echo "Fix Orphaned Issue:: /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is mounted, umount it"
-                     umount /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
-                 fi
+                     # check subvolume path is mounted or not
+                     findmnt /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
+                     if [ "$?" != "0" ]; then
+                         date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, just need to remove"
+                         content=`ls -A /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume`
+                         # if path is empty, just remove the directory.
+                         if [ "$content" = "" ]; then
+                             rmdir /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
+                         # if path is not empty, do nothing.
+                         else
+                             date_echo "/var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is not mounted, but not empty"
+                             idleTimes=0
+                         fi
+                     # is mounted, umounted it first.
+                     else
+                         date_echo "Fix Orphaned Issue:: /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is mounted, umount it"
+                         umount /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
+                     fi
              done
          fi
     done
