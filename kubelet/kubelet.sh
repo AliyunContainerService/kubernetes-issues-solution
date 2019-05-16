@@ -117,6 +117,7 @@ fix_orphanedPod(){
                          date_echo "Fix Orphaned Issue:: /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume is mounted, umount it"
                          umount /var/lib/kubelet/pods/$podid/volumes/$volumeType/$subVolume
                      fi
+                 fi
              done
          fi
     done
