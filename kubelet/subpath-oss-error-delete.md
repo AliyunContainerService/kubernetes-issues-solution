@@ -110,3 +110,6 @@ Run the script on error node:
 Deploy daemonset to running script and monitor the issue all the time
 
     # kubectl create -f kubelet/deploy/deploy.yaml
+
+Warning: it is not recommended use subpath on oss.
+
