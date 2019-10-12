@@ -10,4 +10,4 @@ Orphaned Pod is one pod which is terminating and should be clean up.
 
 
 ## How to Fix
-
+New kubernetes release fix some issues on this.
